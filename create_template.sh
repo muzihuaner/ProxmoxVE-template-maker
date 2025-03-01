@@ -88,20 +88,33 @@ for key in "${selected_images[@]}"; do
 
     # 导入磁盘
     echo "正在导入磁盘..."
-    qm importdisk "${vmid}" "${img_file}" "${storage}" >/dev/null 2>&1
-
+    qm importdisk "${vmid}" "${img_file}" "${storage}" --format qcow2 >/dev/null 2>&1
     # 配置存储
-    qm set "${vmid}" --scsihw virtio-scsi-pci \
-        --scsi0 "${storage}:vm-${vmid}-disk-0" >/dev/null 2>&1
-    qm set "${vmid}" --boot order=scsi0 >/dev/null 2>&1
+    # 函数：生成正确的磁盘路径
+    get_disk_path() {
+    local storage_type=$(pvesm status | awk -v storage="$storage" '$1 == storage {print $2}')
+    
+    case $storage_type in
+        dir|nfs|cifs)  # 需要子目录的存储类型
+        echo "$storage:$vmid/vm-$vmid-disk-0.qcow2"
+        ;;
+        lvm|zfs)       # 直接使用卷名的存储类型
+        echo "$storage:vm-$vmid-disk-0"
+        ;;
+        *)
+        echo "未知存储类型: $storage_type"
+        exit 1
+        ;;
+    esac
+    }
+    disk_path=$(get_disk_path)
+    qm set "${vmid}" --scsihw virtio-scsi-pci --scsi0 "$disk_path"
 
     # 配置Cloud-Init
     echo "正在配置Cloud-Init..."
     qm set "${vmid}" --ide2 "${storage}:cloudinit" >/dev/null 2>&1
-    qm set "${vmid}" --citype nocloud \
-        --ciuser "${username}" \
-        --cipassword "${password}" \
-        --ipconfig0 "ip=dhcp" >/dev/null 2>&1
+    qm set "${vmid}" --boot c --bootdisk scsi0 >/dev/null 2>&1
+    qm set "${vmid}" --serial0 socket --vga serial0 >/dev/null 2>&1
 
     # 调整磁盘大小（可选）
     echo "正在调整磁盘大小..."
