@@ -24,7 +24,10 @@
 | 5        | 否   | 镜像名称/VMID/全部镜像  | 全部镜像 |
 
 ## 四、使用示例
-
+```
+wget https://cdn.jsdelivr.net/gh/muzihuaner/ProxmoxVE-template-maker@main/template-maker.sh
+chmod +x template-maker.sh
+```
 ### 1. 创建所有预置模板
 
 ```
