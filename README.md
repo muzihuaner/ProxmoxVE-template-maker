@@ -25,7 +25,7 @@
 
 ## 四、使用示例
 ```
-wget https://cdn.jsdelivr.net/gh/muzihuaner/ProxmoxVE-template-maker@main/template-maker.sh
+wget https://cdn.jsdelivr.net/gh/muzihuaner/ProxmoxVE-template-maker@main/create_template.sh
 chmod +x template-maker.sh
 ```
 ### 1. 创建所有预置模板
