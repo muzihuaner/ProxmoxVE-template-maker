@@ -90,6 +90,7 @@ for key in "${selected_images[@]}"; do
     echo "正在导入磁盘..."
     qm importdisk "${vmid}" "${img_file}" "${storage}" --format qcow2 >/dev/null 2>&1
     # 配置存储
+    echo "正在配置磁盘..."
     # 函数：生成正确的磁盘路径
     get_disk_path() {
     local storage_type=$(pvesm status | awk -v storage="$storage" '$1 == storage {print $2}')
@@ -108,7 +109,7 @@ for key in "${selected_images[@]}"; do
     esac
     }
     disk_path=$(get_disk_path)
-    qm set "${vmid}" --scsihw virtio-scsi-pci --scsi0 "$disk_path"
+    qm set "${vmid}" --scsihw virtio-scsi-pci --scsi0 "$disk_path"> /dev/null 2>&1
 
     # 配置Cloud-Init
     echo "正在配置Cloud-Init..."
