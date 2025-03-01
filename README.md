@@ -26,14 +26,17 @@
 ## 四、使用示例
 ```
 wget https://cdn.jsdelivr.net/gh/muzihuaner/ProxmoxVE-template-maker@main/create_template.sh
-chmod +x template-maker.sh
+chmod +x create_template.sh
 ```
 ### 1. 创建所有预置模板
 
 ```
 ./create_template.sh local-lvm vmbr0
 ```
-
+例子
+```
+./create_template.sh local vmbr0 admin 12345
+```
 ### 2. 创建指定系统模板（按名称）
 
 ```
