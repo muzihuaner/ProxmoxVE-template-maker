@@ -28,6 +28,7 @@ declare -A os_images=(
 echo "------------------------"
 echo "ProxmoxVE Cloud-Init 模板生成工具"
 echo "作者: muzihuaner"
+echo "项目地址：https://github.com/muzihuaner/ProxmoxVE-template-maker"
 echo "------------------------"
 
 # 选择镜像处理模式
