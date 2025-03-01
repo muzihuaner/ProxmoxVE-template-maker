@@ -1,6 +1,20 @@
 #!/bin/bash
 
-# 操作系统名字和链接，按需自行拓展和更新
+# 参数校验
+if [ $# -lt 2 ]; then
+    echo "Usage: $0 <存储名称> <网络桥接> [初始用户名] [初始密码] [镜像名称或VMID]"
+    echo "示例: $0 local-lvm vmbr0 myuser mypass ubuntu2204-jammy"
+    exit 1
+fi
+
+# 参数定义
+storage=$1
+bridge=$2
+username=${3:-"root"}
+password=${4:-"password"}
+image_arg=${5:-"全部镜像"}
+
+# 操作系统镜像列表
 declare -A os_images=(
     ["2000,ubuntu2204-jammy"]="https://mirrors.tuna.tsinghua.edu.cn/ubuntu-cloud-images/jammy/current/jammy-server-cloudimg-amd64.img"
     ["2001,debian12-bookworm"]="https://cloud.debian.org/images/cloud/bookworm/20230612-1409/debian-12-generic-amd64-20230612-1409.qcow2"
@@ -12,122 +26,93 @@ declare -A os_images=(
 )
 
 echo "------------------------"
-echo "Auto image maker by muzihuaner"
+echo "ProxmoxVE Cloud-Init 模板生成工具"
+echo "作者: muzihuaner"
 echo "------------------------"
 
-echo "全部镜像:"
-for os_key in "${!os_images[@]}"; do
-    IFS=',' read -r vmid os_name <<< "$os_key"
-    echo "VMID: $vmid | 名称: $os_name"
-done
-
-echo "------------------------"
-
-# 下载操作系统镜像并创建虚拟机
-download_image_and_create_vm() {
-    local vmid=$1
-    local osname=$2
-    local image_url=$3
-
-    local image_file="${download_dir}/$(basename "$image_url")"
-
-    echo "下载镜像: $osname"
-    if ! wget -q --show-progress -c "$image_url" -O "$image_file"; then
-        echo "镜像下载失败: $image_url"
-        exit 1
-    fi
-
-    # 清理现有虚拟机
-    echo "清理现有虚拟机 (VMID: $vmid)..."
-    qm stop "$vmid" >/dev/null 2>&1 || echo "停止虚拟机 $vmid 失败，可能未运行"
-    if ! qm destroy "$vmid" --destroy-unreferenced-disks=1 --purge=1 >/dev/null 2>&1; then
-        echo "删除虚拟机 $vmid 失败，可能不存在"
-    fi
-
-    # 创建新虚拟机
-    local template_name="Template-$osname"
-    echo "创建虚拟机: $template_name (VMID: $vmid)..."
-    qm create "$vmid" --name "$template_name" --memory 1024 --net0 virtio,bridge="$vmbr" >/dev/null 2>&1 || exit 1
-
-    echo "导入磁盘到存储 '$storage'..."
-    qm disk import "$vmid" "$image_file" "$storage" >/dev/null 2>&1 || exit 1
-
-    echo "配置虚拟机..."
-    qm set "$vmid" \
-        --ostype l26 \
-        --ciuser "$user" \
-        --cipassword "$password" \
-        --virtio0 "$storage:vm-$vmid-disk-0" \
-        --boot c \
-        --bootdisk virtio0 \
-        --ide2 "$storage:cloudinit" \
-        --scsihw virtio-scsi-pci \
-        --serial0 socket \
-        --vga serial0 >/dev/null 2>&1 || exit 1
-
-    # 转换为模板
-    qm template "$vmid" >/dev/null 2>&1 || exit 1
-
-    echo "镜像制作完成: $osname (VMID: $vmid)"
-    echo "------------------------"
-}
-
-# 参数检查
-if [ $# -lt 2 ]; then
-    echo "使用方法: $0 <存储名称> <网络桥接> [用户名] [密码] [镜像名称或VMID]"
-    echo "示例:"
-    echo "创建全部镜像: $0 local-lvm vmbr0"
-    echo "创建单个镜像: $0 local-lvm vmbr0 root password ubuntu2204-jammy"
-    exit 1
-fi
-
-# 参数处理
-storage=$1
-vmbr=$2
-user=${3:-root}          # 默认用户 root
-password=${4:-password}  # 默认密码 password
-image=${5:-}             # 镜像名称或VMID
-
-# 检查存储是否存在
-if ! pvesm list | grep -qw "$storage"; then
-    echo "错误: 存储 '$storage' 不存在!"
-    exit 1
-fi
-
-# 创建下载缓存目录
-download_dir="/tmp/images_cache"
-mkdir -p "$download_dir"
-
-# 镜像选择逻辑
-if [ -n "$image" ]; then
-    echo "正在查找镜像: $image..."
-    selected_os=""
-    for os_key in "${!os_images[@]}"; do
-        IFS=',' read -r key_vmid key_osname <<< "$os_key"
-        if [[ "$image" == "$key_vmid" || "$image" == "$key_osname" ]]; then
-            selected_os="$os_key"
-            break
+# 选择镜像处理模式
+selected_images=()
+if [[ "$image_arg" == "全部镜像" ]]; then
+    echo "正在处理所有镜像..."
+    for key in "${!os_images[@]}"; do
+        selected_images+=("$key")
+    done
+else
+    echo "正在查找匹配的镜像: $image_arg"
+    found=0
+    for key in "${!os_images[@]}"; do
+        IFS=',' read -r vmid name <<< "$key"
+        if [[ "$image_arg" == "$vmid" || "$image_arg" == "$name" ]]; then
+            selected_images+=("$key")
+            found=1
         fi
     done
-
-    if [ -z "$selected_os" ]; then
-        echo "错误：没有找到匹配的镜像 (名称或VMID: $image)"
-        echo "可用镜像:"
-        for os_key in "${!os_images[@]}"; do
-            IFS=',' read -r vmid os_name <<< "$os_key"
-            echo "  $os_name (VMID: $vmid)"
-        done
+    if [[ $found -eq 0 ]]; then
+        echo "错误: 未找到匹配的镜像或VMID: $image_arg"
         exit 1
     fi
-
-    IFS=',' read -r vmid osname <<< "$selected_os"
-    echo "开始制作镜像: $osname (VMID: $vmid)"
-    download_image_and_create_vm "$vmid" "$osname" "${os_images[$selected_os]}"
-else
-    echo "开始制作全部镜像..."
-    for os_key in "${!os_images[@]}"; do
-        IFS=',' read -r vmid osname <<< "$os_key"
-        download_image_and_create_vm "$vmid" "$osname" "${os_images[$os_key]}"
-    done
-    echo "所有镜像制作完成!"
 fi
+
+# 主处理循环
+for key in "${selected_images[@]}"; do
+    IFS=',' read -r vmid img_name <<< "$key"
+    img_url="${os_images[$key]}"
+    
+    echo -e "\n正在处理: ${img_name} (VMID: ${vmid})"
+    echo "镜像URL: ${img_url}"
+
+    # 检查VMID冲突
+    if qm status $vmid >/dev/null 2>&1; then
+        echo "警告: VMID ${vmid} 已存在，跳过处理..."
+        continue
+    fi
+
+    # 创建临时目录
+    temp_dir=$(mktemp -d)
+    echo "创建临时目录: ${temp_dir}"
+
+    # 下载镜像
+    img_file="${temp_dir}/$(basename "${img_url}")"
+    echo "正在下载镜像..."
+    if ! wget -q --show-progress "${img_url}" -O "${img_file}"; then
+        echo "错误: 镜像下载失败!"
+        rm -rf "${temp_dir}"
+        continue
+    fi
+
+    # 创建虚拟机
+    echo "正在创建虚拟机..."
+    qm create "${vmid}" --name "${img_name}-template" \
+        --memory 2048 --cores 2 --cpu host --net0 virtio,bridge="${bridge}" \
+        --agent enabled=1 >/dev/null 2>&1
+
+    # 导入磁盘
+    echo "正在导入磁盘..."
+    qm importdisk "${vmid}" "${img_file}" "${storage}" >/dev/null 2>&1
+
+    # 配置存储
+    qm set "${vmid}" --scsihw virtio-scsi-pci \
+        --scsi0 "${storage}:vm-${vmid}-disk-0" >/dev/null 2>&1
+    qm set "${vmid}" --boot order=scsi0 >/dev/null 2>&1
+
+    # 配置Cloud-Init
+    echo "正在配置Cloud-Init..."
+    qm set "${vmid}" --ide2 "${storage}:cloudinit" >/dev/null 2>&1
+    qm set "${vmid}" --citype nocloud \
+        --ciuser "${username}" \
+        --cipassword "${password}" \
+        --ipconfig0 "ip=dhcp" >/dev/null 2>&1
+
+    # 调整磁盘大小（可选）
+    echo "正在调整磁盘大小..."
+    qm resize "${vmid}" scsi0 +10G >/dev/null 2>&1
+
+    # 转换为模板
+    qm template "${vmid}" >/dev/null 2>&1
+    echo "成功创建模板: VMID ${vmid}"
+
+    # 清理临时文件
+    rm -rf "${temp_dir}"
+done
+
+echo -e "\n所有操作已完成!"
