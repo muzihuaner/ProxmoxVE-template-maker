@@ -25,7 +25,7 @@
 
 ## 四、使用示例
 ```
-wget https://cdn.jsdelivr.net/gh/muzihuaner/ProxmoxVE-template-maker@main/create_template.sh
+wget https://raw.githubusercontent.com/muzihuaner/ProxmoxVE-template-maker/main/create_template.sh
 chmod +x create_template.sh
 ```
 ### 1. 创建所有预置模板
@@ -59,8 +59,8 @@ chmod +x create_template.sh
 
 | VMID | 系统名称          | 下载源地址                      |
 | :--- | :---------------- | :------------------------------ |
-| 2000 | ubuntu2204-jammy  | 清华大学镜像站 Ubuntu 22.04 LTS |
-| 2001 | debian12-bookworm | Debian 官方云镜像               |
+| 2000 | ubuntu2404        | Ubuntu官方镜像 Ubuntu 24.04 LTS |
+| 2001 | debian12           | Debian 官方云镜像               |
 | 2003 | almalinux8        | AlmaLinux 8 官方镜像            |
 | 2005 | rockylinux9       | RockyLinux 9 官方镜像           |
 
@@ -69,7 +69,7 @@ chmod +x create_template.sh
 ## 六、注意事项
 
 1. **环境要求**
-   - 需在 ProxmoxVE 6.0+ 环境运行
+   - 需在 ProxmoxVE 8.0+ 环境运行
    - 确保存储空间 ≥20GB
    - 节点需配置好网络桥接
 2. **权限要求**
