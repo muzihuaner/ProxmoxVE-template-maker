@@ -18,6 +18,13 @@
 - AlmaLinux 8/9
 - RockyLinux 8/9
 
+## 常见 Linux 发行版 Cloud Images 
+
+Ubuntu: https://cloud-images.ubuntu.com/releases/  
+Debian: https://cloud.debian.org/images/cloud/  
+Almalinux: https://repo.almalinux.org/almalinux/  
+Rockylinux：https://dl.rockylinux.org/pub/rocky/
+
 ## 安装
 1. 下载脚本：
 ```bash

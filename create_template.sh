@@ -39,7 +39,7 @@ image_arg=${5:-"全部镜像"}
 
 # 操作系统镜像列表
 declare -A os_images=(
-    ["2000,ubuntu2204-jammy"]="https://mirrors.tuna.tsinghua.edu.cn/ubuntu-cloud-images/jammy/current/jammy-server-cloudimg-amd64.img"
+    ["2000,ubuntu2404-jammy"]="https://cloud-images.ubuntu.com/releases/noble/release/ubuntu-24.04-server-cloudimg-amd64.img"
     ["2001,debian12-bookworm"]="https://cloud.debian.org/images/cloud/bookworm/current/debian-12-generic-amd64.qcow2"
     ["2002,debian11-bullseye"]="https://cloud.debian.org/images/cloud/bullseye/current/debian-11-generic-amd64.qcow2"
     ["2003,almalinux8"]="https://repo.almalinux.org/almalinux/8/cloud/x86_64/images/AlmaLinux-8-GenericCloud-latest.x86_64.qcow2"
