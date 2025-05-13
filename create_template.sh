@@ -91,7 +91,7 @@ create_template() {
     if qm status "$vmid" >/dev/null 2>&1; then
         log_warn "VMID ${vmid} 已存在，跳过处理..."
         return
-    }
+    fi
     
     # 创建临时目录并下载镜像
     temp_dir=$(mktemp -d)
@@ -102,7 +102,7 @@ create_template() {
         log_error "镜像下载失败"
         rm -rf "${temp_dir}"
         return
-    }
+    fi
     
     # 创建和配置虚拟机
     log_info "正在创建和配置虚拟机..."
