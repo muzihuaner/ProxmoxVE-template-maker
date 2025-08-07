@@ -1,91 +1,79 @@
-## 📝 云镜像自动模板生成脚本（适用于 Proxmox VE）
+# 云镜像批量创建脚本 使用说明
 
-此脚本自动化在 Proxmox VE 上下载常见 Linux 云镜像，并将其配置为可用于克隆的 **VM 模板**。支持的系统包括：
+## 脚本功能
 
-- Ubuntu 24.04
-- Debian 12
-- CentOS Stream 9
-- Rocky Linux 9
-- AlmaLinux 9
-- Fedora 42
-
-------
-
-### ✅ 功能特点
-
-- 自动下载云镜像并导入为磁盘
-- 创建 Proxmox VM 并连接 Cloud-Init
-- 配置 SSH 公钥、默认用户、密码等信息
-- 自动扩容磁盘
-- 一键转换为模板（可供后续快速克隆）
+- 批量下载多种常用 Linux 云镜像（Ubuntu、Debian、CentOS、Rocky、AlmaLinux、Fedora）
+- 在 Proxmox VE 中创建对应 VM 模板
+- 配置 Cloud-Init，设置用户密码登录（不使用 SSH 密钥）
+- 自动调整虚拟机硬件配置（CPU、内存、磁盘大小、网络）
+- 将虚拟机转换为模板，方便后续克隆部署
 
 ------
 
-### 📦 依赖要求
+## 使用前准备
 
-确保在执行前满足以下条件：
-
-1. **已安装 Proxmox VE 环境**
-2. **Proxmox CLI 工具可用**（如 `qm`, `wget` 等）
-3. **~/.ssh/id_rsa.pub** 存在（用于注入 SSH 公钥）
-
-若未生成 SSH 密钥对，可使用以下命令创建：
-
-```bash
-ssh-keygen -t rsa -b 4096
-```
+1. **运行环境**
+    需在 Proxmox VE 节点上以 root 用户运行该脚本，确保 `qm` 命令可用。
+2. **网络连接**
+    脚本会从互联网下载云镜像，请确保节点可以访问相应镜像地址。
+3. **存储配置**
+    修改脚本开头的 `STORAGE` 变量，确保其值与你的 Proxmox 存储名称一致（默认 `"local"`）。
+4. **网络桥接**
+    修改 `BRIDGE` 变量为你的 Proxmox 网络桥接名（默认 `"vmbr0"`）。
 
 ------
 
-### 🔧 可配置参数
+## 变量配置
 
-在脚本开头可以修改以下默认值：
+| 变量名             | 说明                          | 默认值       |
+| ------------------ | ----------------------------- | ------------ |
+| `STORAGE`          | Proxmox 存储名称              | `"local"`    |
+| `VMID_START`       | 创建 VM 的起始 VMID           | `9000`       |
+| `DISK_SIZE`        | VM 磁盘大小                   | `"30G"`      |
+| `BRIDGE`           | VM 网络桥接名称               | `"vmbr0"`    |
+| `CPU_CORES`        | 虚拟机 CPU 核心数             | `2`          |
+| `MEMORY_SIZE`      | 虚拟机内存大小（MB）          | `2048`       |
+| `DEFAULT_PASSWORD` | Cloud-Init 设置的默认登录密码 | `"changeme"` |
 
-```bash
-STORAGE="local"        # 存储池名称
-VMID_START=9000        # 初始 VM ID（每个模板递增）
-DISK_SIZE="30G"        # 云镜像扩容后的磁盘大小
-BRIDGE="vmbr0"         # 网络桥接接口
-CPU_CORES=2            # 默认 CPU 核心数
-MEMORY_SIZE=2048       # 默认内存大小（单位：MB）
-```
+
+
+> 可以根据需要修改以上变量以匹配你的环境和需求。
 
 ------
 
-### ▶️ 使用方法
-
-1. 将脚本保存为 `create-cloud-templates.sh`
-2. 给脚本执行权限：
+## 运行脚本
 
 ```
 chmod +x create-cloud-templates.sh
-```
-
-1. 运行脚本：
-
-```
 ./create-cloud-templates.sh
 ```
 
 ------
 
-### 📁 执行后内容说明
+## 登录虚拟机
 
-- 云镜像将下载到本地 `cloud-images/` 目录（如已存在则跳过下载）
-- 每个镜像会创建一个 VM（ID 从 `VMID_START` 开始）
-- 设置完成后，自动转为 **VM 模板**
-- 模板可在 Proxmox UI 中用于创建新 VM
-
-------
-
-### 🔐 默认账户信息（可在脚本中修改）
-
-- Cloud-Init 用户名：每个镜像配置指定（如 `ubuntu`, `debian`, `centos` 等）
-- 默认密码：`changeme`
-- SSH 公钥：使用当前用户 `~/.ssh/id_rsa.pub`
+- 云镜像模板创建完成后，可以通过 Proxmox 克隆该模板生成新 VM。
+- 使用 Cloud-Init 设置的用户名和密码登录虚拟机（密码默认为脚本中的 `DEFAULT_PASSWORD`，例如 `changeme`）。
+- 默认不注入 SSH 公钥，只有密码登录可用。
 
 ------
 
-### 🧹 清理建议（可选）
+## 注意事项
 
-执行完后你可以清理 `cloud-images/` 目录，或保留以便后续使用。
+- **密码登录限制**
+   某些云镜像默认禁用密码登录（例如 Ubuntu），你可能需要在模板内手动开启 SSH 密码登录支持（编辑 `/etc/cloud/cloud.cfg`，设置 `ssh_pwauth: true`）。
+- **安全性**
+   密码登录安全性较低，建议生产环境使用 SSH 密钥登录并设置强密码。
+- **磁盘格式**
+   确保你所使用的存储支持 qcow2 格式，或根据实际存储调整 `qm importdisk` 参数。
+
+------
+
+## 常见问题
+
+- **下载失败**
+   请检查网络是否正常，镜像 URL 是否可访问。
+- **VMID 冲突**
+   确认 `VMID_START` 不与已有 VM 冲突，否则调整起始 ID。
+- **网络连接失败**
+   确保 `BRIDGE` 配置正确且网络通畅。
