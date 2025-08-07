@@ -1,74 +1,91 @@
-# ProxmoxVE云镜像模板生成脚本
+## 📝 云镜像自动模板生成脚本（适用于 Proxmox VE）
 
-### 功能说明
+此脚本自动化在 Proxmox VE 上下载常见 Linux 云镜像，并将其配置为可用于克隆的 **VM 模板**。支持的系统包括：
 
-1. **自动下载官方云镜像**：
-   - 支持Ubuntu/Debian/CentOS/Rocky Linux/AlmaLinux/Fedora
-   - 自动缓存已下载镜像到`/tmp`
-2. **自动配置Cloud-Init**：
-   - 设置默认用户（各发行版不同）
-   - 启用NoCloud数据源
-   - 可选SSH密钥注入
-   - DHCP网络配置
-3. **虚拟机模板转换**：
-   - 自动分配唯一VMID（9000-9005）
-   - 创建后自动转换为模板
-   - 添加模板描述信息
-4. **QEMU Guest Agent支持**：
-   - 自动安装并启用服务
-   - 在Proxmox中启用代理
-5. **磁盘扩展**：
-   - 默认扩展+10G空间
-   - 使用`qm resize`动态调整
-6. **批量处理**：
-   - 自动处理所有预定义镜像
-   - 跳过已存在的模板
+- Ubuntu 24.04
+- Debian 12
+- CentOS Stream 9
+- Rocky Linux 9
+- AlmaLinux 9
+- Fedora 42
 
-### 使用说明
+------
 
-1. **保存脚本**为`create-cloud-template.sh`
+### ✅ 功能特点
 
-2. **修改配置参数**：
+- 自动下载云镜像并导入为磁盘
+- 创建 Proxmox VM 并连接 Cloud-Init
+- 配置 SSH 公钥、默认用户、密码等信息
+- 自动扩容磁盘
+- 一键转换为模板（可供后续快速克隆）
 
-   - `STORAGE`：你的Proxmox存储名称
-   - `BRIDGE`：网络桥接接口
-   - `SSH_KEY`：如果需要注入SSH公钥
+------
 
-3. **运行脚本**：
+### 📦 依赖要求
 
-   bash
+确保在执行前满足以下条件：
 
-   ```
-   chmod +x create-cloud-template.sh
-   ./create-cloud-template.sh
-   ```
+1. **已安装 Proxmox VE 环境**
+2. **Proxmox CLI 工具可用**（如 `qm`, `wget` 等）
+3. **~/.ssh/id_rsa.pub** 存在（用于注入 SSH 公钥）
 
-### 注意事项
+若未生成 SSH 密钥对，可使用以下命令创建：
 
-1. 需要**root权限**运行
+```bash
+ssh-keygen -t rsa -b 4096
+```
 
-2. 首次运行会下载镜像（约2-5GB，取决于网络）
+------
 
-3. 需要安装`libguestfs-tools`：
+### 🔧 可配置参数
 
-   bash
+在脚本开头可以修改以下默认值：
 
-   ```
-   apt install libguestfs-tools
-   ```
+```bash
+STORAGE="local"        # 存储池名称
+VMID_START=9000        # 初始 VM ID（每个模板递增）
+DISK_SIZE="30G"        # 云镜像扩容后的磁盘大小
+BRIDGE="vmbr0"         # 网络桥接接口
+CPU_CORES=2            # 默认 CPU 核心数
+MEMORY_SIZE=2048       # 默认内存大小（单位：MB）
+```
 
-4. 生成的模板可在Proxmox GUI的**虚拟机模板**中找到
+------
 
-### 自定义扩展
+### ▶️ 使用方法
 
-- **添加新镜像**：在`CLOUD_IMAGES`数组中添加新条目
+1. 将脚本保存为 `create-cloud-templates.sh`
+2. 给脚本执行权限：
 
-  bash
+```
+chmod +x create-cloud-templates.sh
+```
 
-  ```
-  ["镜像名称"]="下载URL 默认用户名"
-  ```
+1. 运行脚本：
 
-- **调整资源**：修改`MEMORY`/`CORES`/`DISK_SIZE`变量
+```
+./create-cloud-templates.sh
+```
 
-- **自定义Cloud-Init**：修改`configure_cloudinit()`函数
+------
+
+### 📁 执行后内容说明
+
+- 云镜像将下载到本地 `cloud-images/` 目录（如已存在则跳过下载）
+- 每个镜像会创建一个 VM（ID 从 `VMID_START` 开始）
+- 设置完成后，自动转为 **VM 模板**
+- 模板可在 Proxmox UI 中用于创建新 VM
+
+------
+
+### 🔐 默认账户信息（可在脚本中修改）
+
+- Cloud-Init 用户名：每个镜像配置指定（如 `ubuntu`, `debian`, `centos` 等）
+- 默认密码：`changeme`
+- SSH 公钥：使用当前用户 `~/.ssh/id_rsa.pub`
+
+------
+
+### 🧹 清理建议（可选）
+
+执行完后你可以清理 `cloud-images/` 目录，或保留以便后续使用。
