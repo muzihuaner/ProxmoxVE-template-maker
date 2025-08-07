@@ -18,12 +18,7 @@ DISK_SIZE="30G"         # 默认硬盘大小
 BRIDGE="vmbr0"
 CPU_CORES=2             # 默认 CPU 核心数
 MEMORY_SIZE=2048        # 默认内存大小（MB）
-
-# 检查 SSH 公钥是否存在
-if [ ! -f ~/.ssh/id_rsa.pub ]; then
-    echo "❌ SSH 公钥 ~/.ssh/id_rsa.pub 不存在，请先生成密钥对。"
-    exit 1
-fi
+DEFAULT_PASSWORD="changeme"  # 默认登录密码（不安全，仅测试用途）
 
 mkdir -p cloud-images
 
@@ -66,11 +61,11 @@ for image_name in "${!CLOUD_IMAGES[@]}"; do
     # 扩展磁盘大小
     qm resize "$VMID" scsi0 "$DISK_SIZE"
 
-    # 添加 Cloud-Init 支持
+    # 添加 Cloud-Init 支持（仅使用密码登录）
     qm set "$VMID" --ide2 "$STORAGE":cloudinit
     qm set "$VMID" --boot c --bootdisk scsi0
     qm set "$VMID" --serial0 socket --vga serial0
-    qm set "$VMID" --ciuser "$USERNAME" --cipassword "changeme" --sshkeys ~/.ssh/id_rsa.pub
+    qm set "$VMID" --ciuser "$USERNAME" --cipassword "$DEFAULT_PASSWORD"
 
     # 转换为模板
     qm template "$VMID"
@@ -78,4 +73,4 @@ for image_name in "${!CLOUD_IMAGES[@]}"; do
     echo "-------------------------------------------"
 done
 
-echo "🎉 所有云模板生成完成！"
+echo "🎉 所有云模板生成完成！（仅密码登录，默认密码：$DEFAULT_PASSWORD）"
