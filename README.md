@@ -1,134 +1,74 @@
-# ProxmoxVE 云镜像模板生成工具
-## 一、工具简介
+# ProxmoxVE云镜像模板生成脚本
 
-本脚本用于自动化创建基于 Cloud-Init 的 ProxmoxVE 虚拟机模板，支持主流 Linux 发行版的云镜像转换，适用于快速部署标准化云主机环境。
+### 功能说明
 
-## 二、核心功能
+1. **自动下载官方云镜像**：
+   - 支持Ubuntu/Debian/CentOS/Rocky Linux/AlmaLinux/Fedora
+   - 自动缓存已下载镜像到`/tmp`
+2. **自动配置Cloud-Init**：
+   - 设置默认用户（各发行版不同）
+   - 启用NoCloud数据源
+   - 可选SSH密钥注入
+   - DHCP网络配置
+3. **虚拟机模板转换**：
+   - 自动分配唯一VMID（9000-9005）
+   - 创建后自动转换为模板
+   - 添加模板描述信息
+4. **QEMU Guest Agent支持**：
+   - 自动安装并启用服务
+   - 在Proxmox中启用代理
+5. **磁盘扩展**：
+   - 默认扩展+10G空间
+   - 使用`qm resize`动态调整
+6. **批量处理**：
+   - 自动处理所有预定义镜像
+   - 跳过已存在的模板
 
-- ✅ 自动下载官方云镜像
-- ✅ 自动配置 Cloud-Init 参数
-- ✅ 自动转换虚拟机模板
-- ✅ 支持多镜像批量处理
-- ✅ 默认启用 QEMU Guest Agent
-- ✅ 自动扩展磁盘空间(+10G)
-- ✅ 预置主流 Linux 发行版镜像
+### 使用说明
 
-## 三、参数说明
+1. **保存脚本**为`create-cloud-template.sh`
 
-| 参数位置 | 必选 | 说明                    | 默认值   |
-| :------- | :--- | :---------------------- | :------- |
-| 1        | 是   | 存储名称 (如 local-lvm) | 无       |
-| 2        | 是   | 网络桥接 (如 vmbr0)     | 无       |
-| 3        | 否   | 初始用户名              | root     |
-| 4        | 否   | 初始密码                | password |
-| 5        | 否   | 镜像名称/VMID/全部镜像  | 全部镜像 |
+2. **修改配置参数**：
 
-## 四、使用示例
-```
-wget https://raw.githubusercontent.com/muzihuaner/ProxmoxVE-template-maker/main/create_template.sh
-chmod +x create_template.sh
-```
-### 1. 创建所有预置模板
+   - `STORAGE`：你的Proxmox存储名称
+   - `BRIDGE`：网络桥接接口
+   - `SSH_KEY`：如果需要注入SSH公钥
 
-```
-./create_template.sh local-lvm vmbr0
-```
-例子
-```
-./create_template.sh local vmbr0 admin 12345
-```
-### 2. 创建指定系统模板（按名称）
+3. **运行脚本**：
 
-```
-./create_template.sh local-lvm vmbr0 myuser MyP@ssw0rd ubuntu2404
-```
+   bash
 
-### 3. 创建指定系统模板（按VMID）
+   ```
+   chmod +x create-cloud-template.sh
+   ./create-cloud-template.sh
+   ```
 
-```
-./create_template.sh local-lvm vmbr0 admin Admin1234 2001
-```
+### 注意事项
 
-### 4. 自定义认证信息
+1. 需要**root权限**运行
 
-```
-./create_template.sh local-lvm vmbr0 clouduser Cloud@123
-```
+2. 首次运行会下载镜像（约2-5GB，取决于网络）
 
-## 五、预置镜像列表
+3. 需要安装`libguestfs-tools`：
 
-    ["2000,ubuntu2404"]="https://cloud-images.ubuntu.com/releases/noble/release/ubuntu-24.04-server-cloudimg-amd64.img"
-    ["2001,debian12"]="https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-generic-amd64.qcow2"
-    ["2002,debian11"]="https://cloud.debian.org/images/cloud/bullseye/latest/debian-11-generic-amd64.qcow2"
-    ["2003,almalinux8"]="https://repo.almalinux.org/almalinux/8/cloud/x86_64/images/AlmaLinux-8-GenericCloud-latest.x86_64.qcow2"
-    ["2004,almalinux9"]="https://repo.almalinux.org/almalinux/9/cloud/x86_64/images/AlmaLinux-9-GenericCloud-latest.x86_64.qcow2"
-    ["2005,rockylinux9"]="https://dl.rockylinux.org/pub/rocky/9/images/x86_64/Rocky-9-GenericCloud-Base.latest.x86_64.qcow2"
-    ["2006,rockylinux8"]="https://dl.rockylinux.org/pub/rocky/8/images/x86_64/Rocky-8-GenericCloud-Base.latest.x86_64.qcow2"
+   bash
 
-（完整列表请查看脚本内 os_images 数组）
+   ```
+   apt install libguestfs-tools
+   ```
 
-## 六、注意事项
+4. 生成的模板可在Proxmox GUI的**虚拟机模板**中找到
 
-1. **环境要求**
-   - 需在 ProxmoxVE 8.0+ 环境运行
-   - 确保存储空间 ≥20GB
-   - 节点需配置好网络桥接
-2. **权限要求**
-   - 使用 root 用户执行
-   - 确保有存储目录写入权限
-3. **网络要求**
-   - 节点需能访问互联网下载镜像
-   - 建议配置国内镜像源加速下载
-4. **模板特性**
-   - 默认配置：2核CPU/2GB内存
-   - 使用 virtio-scsi 磁盘控制器
-   - 启用 DHCP 自动获取IP
+### 自定义扩展
 
-## 七、维护建议
+- **添加新镜像**：在`CLOUD_IMAGES`数组中添加新条目
 
-1. **镜像更新**
-   - 定期检查脚本内镜像URL有效性
-   - 通过修改 os_images 数组添加新系统
-2. **配置调整**
-   - 内存/CPU参数：修改 `qm create` 命令参数
-   - 磁盘大小：调整 `qm resize` 命令数值
-   - 添加SSH密钥：增加 `--sshkey` 参数
-3. **日志查看**
+  bash
 
-```
-# 查看虚拟机创建日志
-tail -f /var/log/pve/tasks/active
+  ```
+  ["镜像名称"]="下载URL 默认用户名"
+  ```
 
-# 查看 Cloud-Init 初始化日志
-qm cloudinit dump <vmid> user
-```
+- **调整资源**：修改`MEMORY`/`CORES`/`DISK_SIZE`变量
 
-## 八、常见问题
-
-**Q1: 镜像下载失败怎么办？**
-
-- 检查网络连接状态
-- 尝试手动访问镜像URL
-- 更换镜像源地址
-
-**Q2: 出现 "qm command not found" 错误**
-
-- 确认在 ProxmoxVE 节点执行
-- 检查是否使用 root 用户
-
-**Q3: 虚拟机无法获取IP地址**
-
-- 检查网络桥接配置
-- 验证 Cloud-Init 配置：`qm cloudinit dump <vmid> network`
-
-**Q4: 如何删除已创建的模板？**
-
-```
-qm destroy <vmid> --purge
-rm /var/lib/vz/images/<vmid>/*
-```
-
-**Q5: 自定义镜像支持哪些格式？**
-
-- 支持 .img / .qcow2 格式
-- 需包含 cloud-init 组件
+- **自定义Cloud-Init**：修改`configure_cloudinit()`函数
