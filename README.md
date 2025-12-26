@@ -1,79 +1,80 @@
-# 云镜像批量创建脚本 使用说明
+# Proxmox VE Cloud-Init 模板自动化工具使用指南
 
-## 脚本功能
+本脚本用于在 **Proxmox VE (PVE)** 环境下，通过官方 Cloud 镜像一键创建经过优化的 **Debian/Ubuntu/Rocky** 虚拟机模板。
 
-- 批量下载多种常用 Linux 云镜像（Ubuntu、Debian、CentOS、Rocky、AlmaLinux、Fedora）
-- 在 Proxmox VE 中创建对应 VM 模板
-- 配置 Cloud-Init，设置用户密码登录（不使用 SSH 密钥）
-- 自动调整虚拟机硬件配置（CPU、内存、磁盘大小、网络）
-- 将虚拟机转换为模板，方便后续克隆部署
+## 1. 核心功能
 
-------
-
-## 使用前准备
-
-1. **运行环境**
-    需在 Proxmox VE 节点上以 root 用户运行该脚本，确保 `qm` 命令可用。
-2. **网络连接**
-    脚本会从互联网下载云镜像，请确保节点可以访问相应镜像地址。
-3. **存储配置**
-    修改脚本开头的 `STORAGE` 变量，确保其值与你的 Proxmox 存储名称一致（默认 `"local"`）。
-4. **网络桥接**
-    修改 `BRIDGE` 变量为你的 Proxmox 网络桥接名（默认 `"vmbr0"`）。
+- **智能下载**：自动检测本地镜像，支持断点续传，避免重复下载。
+- **离线预配置**：利用 `virt-customize` 直接注入 `qemu-guest-agent`、设置时区、安装基础工具（htop, curl 等）。
+- **自动扩容**：将官方默认的小容量镜像自动扩展至 **30GB**。
+- **存储兼容**：完美支持 `local` (Directory) 和 `local-lvm` (LVM-Thin) 存储。
+- **交互式操作**：支持自定义 VM ID 和 模板名称。
 
 ------
 
-## 变量配置
+## 2. 前置环境准备
 
-| 变量名             | 说明                          | 默认值       |
-| ------------------ | ----------------------------- | ------------ |
-| `STORAGE`          | Proxmox 存储名称              | `"local"`    |
-| `VMID_START`       | 创建 VM 的起始 VMID           | `9000`       |
-| `DISK_SIZE`        | VM 磁盘大小                   | `"30G"`      |
-| `BRIDGE`           | VM 网络桥接名称               | `"vmbr0"`    |
-| `CPU_CORES`        | 虚拟机 CPU 核心数             | `2`          |
-| `MEMORY_SIZE`      | 虚拟机内存大小（MB）          | `2048`       |
-| `DEFAULT_PASSWORD` | Cloud-Init 设置的默认登录密码 | `"changeme"` |
+在运行脚本前，请确保 PVE 宿主机已安装必要工具：
 
-
-
-> 可以根据需要修改以上变量以匹配你的环境和需求。
-
-------
-
-## 运行脚本
+Bash
 
 ```
-chmod +x create-cloud-templates.sh
-./create-cloud-templates.sh
+apt update && apt install -y libguestfs-tools wget
 ```
 
 ------
 
-## 登录虚拟机
+## 3. 快速开始
 
-- 云镜像模板创建完成后，可以通过 Proxmox 克隆该模板生成新 VM。
-- 使用 Cloud-Init 设置的用户名和密码登录虚拟机（密码默认为脚本中的 `DEFAULT_PASSWORD`，例如 `changeme`）。
-- 默认不注入 SSH 公钥，只有密码登录可用。
+### 第一步：获取脚本
+
+将脚本内容保存为 `make_template.sh`。
+
+### 第二步：配置环境参数（可选）
+
+如果你的存储名称不是默认的 `local`，请编辑脚本前几行：
+
+- `STORAGE="local"`：修改为你的存储 ID（可通过 `pvesm status` 查看）。
+- `DISK_SIZE="30G"`：修改你希望的默认硬盘大小。
+
+### 第三步：赋予权限并运行
+
+Bash
+
+```
+chmod +x make_template.sh
+./make_template.sh
+```
 
 ------
 
-## 注意事项
+## 4. 脚本执行流程
 
-- **密码登录限制**
-   某些云镜像默认禁用密码登录（例如 Ubuntu），你可能需要在模板内手动开启 SSH 密码登录支持（编辑 `/etc/cloud/cloud.cfg`，设置 `ssh_pwauth: true`）。
-- **安全性**
-   密码登录安全性较低，建议生产环境使用 SSH 密钥登录并设置强密码。
-- **磁盘格式**
-   确保你所使用的存储支持 qcow2 格式，或根据实际存储调整 `qm importdisk` 参数。
+1. **选择系统**：从菜单中选择想要创建的操作系统。
+2. **设置 ID/名称**：输入 VM ID（默认 1000）和 模板名。
+3. **下载与注入**：脚本自动处理镜像并注入驱动。
+4. **创建与转换**：自动创建 VM，挂载磁盘，并将其转换为 **Template（模板）**。
 
 ------
 
-## 常见问题
+## 5. 模板使用后续操作（重要）
 
-- **下载失败**
-   请检查网络是否正常，镜像 URL 是否可访问。
-- **VMID 冲突**
-   确认 `VMID_START` 不与已有 VM 冲突，否则调整起始 ID。
-- **网络连接失败**
-   确保 `BRIDGE` 配置正确且网络通畅。
+模板创建成功后，无法直接启动，你需要通过 **“克隆 (Clone)”** 的方式使用它：
+
+### 1. 克隆虚拟机
+
+- 在 PVE 网页界面，右键点击该模板 -> 选择 **Clone**。
+- 模式建议选择 **Full Clone**（独立性强）或 **Linked Clone**（节省空间）。
+
+### 2. 配置 Cloud-Init (必须)
+
+在启动克隆出的虚拟机之前，点击该 VM 的 **Cloud-Init** 选项卡：
+
+- **User / Password**：设置你的登录用户名和密码。
+- **SSH Public Key**：建议填入你的公钥，实现免密登录。
+- **IP Config**：默认是 DHCP，如需静态 IP 请在此修改。
+- **重生成镜像**：修改完上述项后，点击顶部的 **Regenerate Image**。
+
+### 3. 启动
+
+点击 **Start**，系统会自动完成初始化，你可以直接通过 SSH 或 Console 登录。
