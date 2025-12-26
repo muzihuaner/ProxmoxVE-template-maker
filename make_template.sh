@@ -6,7 +6,7 @@ set -e
 # =================================================================
 STORAGE="local"       
 BRIDGE="vmbr0"
-DISK_SIZE="30G"       
+DISK_SIZE="40G"       
 
 declare -A IMAGES
 IMAGES=(
