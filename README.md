@@ -58,6 +58,12 @@ chmod +x make_template.sh
 ./make_template.sh
 ```
 
+### 一键执行
+
+```
+bash <(curl -s https://raw.githubusercontent.com/muzihuaner/ProxmoxVE-template-maker/refs/heads/main/make_template.sh)
+```
+
 ------
 
 ## 5. 脚本执行流程
