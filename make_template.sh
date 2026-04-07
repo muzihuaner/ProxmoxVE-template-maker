@@ -10,10 +10,12 @@ DISK_SIZE="40G"
 
 declare -A IMAGES
 IMAGES=(
-    ["1"]="Debian-12|https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-genericcloud-amd64.qcow2"
-    ["2"]="Ubuntu-22.04|https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img"
-    ["3"]="Ubuntu-24.04|https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img"
-    ["4"]="Rocky-9|https://dl.rockylinux.org/pub/rocky/9/images/x86_64/Rocky-9-GenericCloud-Base.latest.x86_64.qcow2"
+    ["1"]="Debian-13|https://cloud.debian.org/images/cloud/trixie/latest/debian-13-genericcloud-amd64.qcow2"
+    ["2"]="Debian-12|https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-genericcloud-amd64.qcow2"
+    ["3"]="Ubuntu-22.04|https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img"
+    ["4"]="Ubuntu-24.04|https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img"
+    ["5"]="Rocky-9|https://dl.rockylinux.org/pub/rocky/9/images/x86_64/Rocky-9-GenericCloud-Base.latest.x86_64.qcow2"
+    ["6"]="AlmaLinux-9|https://repo.almalinux.org/almalinux/9/cloud/x86_64/images/AlmaLinux-9-GenericCloud-latest.x86_64.qcow2"
 )
 
 # =================================================================
@@ -31,7 +33,7 @@ fi
 for key in $(echo ${!IMAGES[@]} | tr ' ' '\n' | sort -n); do
     echo "$key) ${IMAGES[$key]%%|*}"
 done
-read -p "请选择系统编号 [1-4]: " choice
+read -p "请选择系统编号 [1-6]: " choice
 
 [[ -z "${IMAGES[$choice]}" ]] && { echo "错误：无效选择！"; exit 1; }
 
@@ -42,6 +44,13 @@ FILE_NAME=$(basename "$URL")
 
 read -p "请输入虚拟机 ID (默认 1000): " VM_ID
 VM_ID=${VM_ID:-1000}
+
+# 验证 VM_ID 是否为有效数字且在合理范围内
+if ! [[ "$VM_ID" =~ ^[0-9]+$ ]] || [ "$VM_ID" -lt 100 ] || [ "$VM_ID" -gt 999999 ]; then
+    echo "错误：VM ID 必须是 100-999999 之间的数字"
+    exit 1
+fi
+
 read -p "请输入模板名称 (默认 $OS_NAME-template): " VM_NAME
 VM_NAME=$(echo "${VM_NAME:-$OS_NAME-template}" | tr ' _' '-')
 
@@ -53,12 +62,28 @@ else
     wget -c "$URL" -O "$FILE_NAME"
 fi
 
-echo ">>> 正在自定义镜像配置..."
+# 根据 OS 类型动态调整安装包
+case "$OS_NAME" in
+    Debian-*|Ubuntu-*)
+        PACKAGES="qemu-guest-agent,htop,curl,net-tools"
+        ;;
+    Rocky-*|CentOS-*|AlmaLinux-*)
+        PACKAGES="qemu-guest-agent,htop,curl"
+        ;;
+    *)
+        PACKAGES="qemu-guest-agent,htop,curl"
+        ;;
+esac
+
+echo ">>> 正在自定义镜像配置（安装软件包、设置时区等，可能需要几分钟）..."
 virt-customize -a "$FILE_NAME" \
-    --install "qemu-guest-agent,htop,curl,net-tools" \
+    --install "$PACKAGES" \
     --timezone "Asia/Shanghai" \
     --run-command "systemctl enable qemu-guest-agent" \
-    --firstboot-command "truncate -s 0 /etc/machine-id"
+    --firstboot-command "truncate -s 0 /etc/machine-id" || {
+    echo "错误：virt-customize 执行失败，请检查日志或手动排查"
+    exit 1
+}
 
 # 2. VM 创建
 echo ">>> 正在创建 VM $VM_ID..."
