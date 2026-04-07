@@ -76,17 +76,21 @@ chmod +x make_template.sh
 ### 1. 克隆虚拟机
 
 - 在 PVE 网页界面，右键点击该模板 -> 选择 **Clone**。
-- 模式建议选择 **Full Clone**（独立性强）或 **Linked Clone**（节省空间）。
+- 模式建议选择 **完整克隆**（独立性强）或 **链接克隆**（节省空间）。
 
 ### 2. 配置 Cloud-Init (必须)
 
 在启动克隆出的虚拟机之前，点击该 VM 的 **Cloud-Init** 选项卡：
 
-- **User / Password**：设置你的登录用户名和密码。
-- **SSH Public Key**：建议填入你的公钥，实现免密登录。
-- **IP Config**：默认是 DHCP，如需静态 IP 请在此修改。
-- **重生成镜像**：修改完上述项后，点击顶部的 **Regenerate Image**。
+- **用户 / 密码**：设置你的登录用户名和密码。
+- **SSH 公钥**：建议填入你的公钥，实现免密登录。（可选）
+  - **如何生成**：在本地终端运行 `ssh-keygen -t ed25519 -C "your_email@example.com"`（Windows 10+ 支持）
+  - **查看公钥**：运行 `cat ~/.ssh/id_ed25519.pub`（Linux/Mac）或 `type %USERPROFILE%\.ssh\id_ed25519.pub`（Windows）
+  - **使用方法**：将输出的整行公钥内容粘贴到SSH 公钥
+  - **效果**：启动后可使用对应私钥直接 SSH 登录，无需密码，更安全便捷
+- **IP 配置**：默认是 DHCP，如需静态 IP 请在此修改。
+- **重生成镜像**：修改完上述项后，点击顶部的 **重生成镜像**。
 
 ### 3. 启动
 
-点击 **Start**，系统会自动完成初始化，你可以直接通过 SSH 或 Console 登录。
+点击 **启动**，系统会自动完成初始化，你可以直接通过 SSH 或 Console 登录。
