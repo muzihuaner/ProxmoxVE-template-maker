@@ -109,7 +109,6 @@ qm disk resize $VM_ID scsi0 $DISK_SIZE
 # 4. 最后配置
 qm set $VM_ID --boot c --bootdisk scsi0
 qm set $VM_ID --ide2 $STORAGE:cloudinit
-qm set $VM_ID --serial0 socket --vga serial0
 qm set $VM_ID --agent enabled=1
 
 echo ">>> 转换为模板..."
